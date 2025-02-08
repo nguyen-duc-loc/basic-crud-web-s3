@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Update
+sudo apt update
+
+# Change timezone
+sudo timedatectl set-timezone Asia/Ho_Chi_Minh
+
+# Install mysql
+sudo apt install -y mysql-server
+
+# Allow access mysql
+echo "bind-address            = 0.0.0.0" >> /etc/mysql/mysql.conf.d/mysqld.cnf 
+sudo systemctl restart mysql
+
+# Create database
+sudo mysql -u root -e "CREATE DATABASE ${db_database} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+sudo mysql -u root -e "CREATE USER '${db_admin_username}'@'localhost';GRANT ALL PRIVILEGES ON ${db_database}.* TO '${db_admin_username}'@'localhost';ALTER USER '${db_admin_username}'@'localhost' IDENTIFIED BY '${db_admin_password}';FLUSH PRIVILEGES;"
+
+# Create users
+%{ for instance_id, private_dns in instances }
+  sudo mysql -u root -e "CREATE USER '${instance_id}'@'${private_dns}';GRANT SELECT, INSERT, UPDATE, DELETE ON ${db_database}.* TO '${instance_id}'@'${private_dns}';ALTER USER '${instance_id}'@'${private_dns}' IDENTIFIED BY '${instance_id}';FLUSH PRIVILEGES;"
+%{ endfor  ~}
+
+# Install make
+sudo apt install -y make
+
+# Install migrate
+curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.1/migrate.linux-amd64.tar.gz | tar xvz
+rm LICENSE
+rm README.md
+sudo mv migrate /usr/bin
+
+# Clone git repository
+git clone https://github.com/nguyen-duc-loc/user-management-v2.git user-management
+cd user-management
+
+# Add environment variables
+echo "DB_HOST=localhost" >> .env.local
+echo "DB_USER=${db_admin_username}" >> .env.local
+echo "DB_PASSWORD=${db_admin_password}" >> .env.local
+echo "DB_DATABASE=${db_database}" >> .env.local
+
+# Migrate database
+make migrate/up
+
+# Delete repository
+cd ..
+rm -rf user-management
