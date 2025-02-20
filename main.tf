@@ -156,6 +156,7 @@ resource "null_resource" "run_webs" {
       "echo 'DB_PASSWORD=${module.webs_ec2[count.index].instance_id}' >> .env",
       "echo 'DB_DATABASE=${var.db_database}' >> .env",
       "echo 'BACKEND_URL=http://localhost:3000' >> .env",
+      "echo 'CLOUD_PROVIDER=gcp' >> .env",
       "echo 'AWS_ACCESS_KEY=${var.access_key}' >> .env",
       "echo 'AWS_SECRET_KEY=${var.secret_key}' >> .env",
       "echo 'AWS_REGION=${var.region}' >> .env",
